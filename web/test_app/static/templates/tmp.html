@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Django Frontend</title>
+</head>
+<body>
+    <h1>Message from Backend</h1>
+    <div id="message">Loading...</div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/get-string/')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('message').innerText = data.message;
+                })
+                .catch(error => {
+                    console.error('Error fetching message:', error);
+                    document.getElementById('message').innerText = 'Failed to load message.';
+                });
+        });
+    </script>
+</body>
+</html>

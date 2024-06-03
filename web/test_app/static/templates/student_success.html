@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>选课系统</title>
+    <link rel="stylesheet" href="{% static 'css/system_interface.css' %}">
+</head>
+<body>
+    <div id="sidebar" class="sidebar">
+        <a href="#" id="homeLink">首页</a>
+        <a href="#" id="selectCourseLink">选课</a>
+        <a href="#" id="courseLink">我的课程</a>
+    </div>
+    <div id="student-info" data-student-id="{{ student_id }}" data-student-name="{{ student_name }}" data-student-email="{{ student_email }}"></div>
+    <div id="content" class="content">
+        <!-- Content will be dynamically loaded here -->
+    </div>
+    <script>
+        const homeLink = document.getElementById('homeLink');
+        const selectCourseLink = document.getElementById('selectCourseLink');
+        const courseLink = document.getElementById('courseLink');
+
+        const content = document.getElementById('content');
+        const courses = JSON.parse('{{ courses_json|escapejs }}');
+        const filtered_courses = JSON.parse('{{ all_courses_json|escapejs }}');
+
+        const studentInfoDiv = document.getElementById('student-info');
+        const studentId = studentInfoDiv.dataset.studentId;
+        const studentName = studentInfoDiv.dataset.studentName;
+        const studentEmail = studentInfoDiv.dataset.studentEmail;
+
+        // 页面加载时直接显示学生信息
+        displayStudentInfo();
+
+        selectCourseLink.addEventListener('click', displayFilteredCourseSelectionInfo);
+
+        homeLink.addEventListener('click', displayStudentInfo);
+
+        courseLink.addEventListener('click', displayCourseSelectionInfo);
+
+        // 显示学生信息函数
+        function displayStudentInfo() {
+            content.innerHTML = `
+                <h2>学生信息</h2>
+                <table>
+                    <tr>
+                        <th>学生姓名</th>
+                        <td>{{ student_name }}</td>
+                        <td><button class="edit-course-btn">修改</button></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <th>邮箱</th>
+                        <td>{{ student_email }}</td>
+                        <td><button class="edit-course-btn">修改</button></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <th>密码</th>
+                        <td>{{ student_password }}</td>
+                        <td><button class="edit-course-btn">修改</button></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <th>总学分</th>
+                        <td>{{ sum_credits }}</td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </table>
+            `;
+            // 学生信息监听器
+            StudentAttachEventListeners();
+        }
+
+        // 学生信息监听器
+        function StudentAttachEventListeners() {
+            const editBtns = document.querySelectorAll('.edit-course-btn');
+            editBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // 获取当前按钮所在行
+                    const row = btn.parentElement.parentElement;
+
+                    const informationCell = row.querySelector('td:nth-child(2)');
+                    const updateType = row.rowIndex;
+
+                    const originalInformation = informationCell.textContent;
+
+                    // 将原始信息显示为输入框
+                    informationCell.innerHTML = `<input type="text" value="${originalInformation}">`;
+
+                    // 隐藏修改按钮
+                    btn.style.display = 'none';
+
+                    // 创建确认和取消按钮
+                    const confirmBtn = document.createElement('button');
+                    confirmBtn.textContent = '确认';
+                    confirmBtn.style.backgroundColor = 'green';
+                    confirmBtn.classList.add('edit-course-btn');
+
+                    const cancelBtn = document.createElement('button');
+                    cancelBtn.textContent = '取消';
+                    cancelBtn.classList.add('edit-course-btn');
+
+                    // 清空操作单元格并添加按钮
+                    const actionCell = row.querySelector('td:nth-child(4)');
+                    if (actionCell) {
+                        actionCell.innerHTML = '';
+                        actionCell.appendChild(confirmBtn);
+                        actionCell.appendChild(cancelBtn);
+                    }
+
+                    // 添加事件监听器
+                    confirmBtn.addEventListener('click', () => {
+                        const newInformation = informationCell.querySelector('input').value;
+
+                        const data = {
+                            account: studentId,
+                            new_information: newInformation,
+                            update_type: updateType,
+                            action: 'update_information'
+                        };
+                        sendDataToServer(data);
+                    });
+
+                    cancelBtn.addEventListener('click', () => {
+                        informationCell.textContent = originalInformation;
+
+                        // 重新显示修改按钮
+                        btn.style.display = 'inline';
+
+                        // 移除确认和取消按钮
+                        if (actionCell) {
+                            actionCell.removeChild(confirmBtn);
+                            actionCell.removeChild(cancelBtn);
+                        }
+                    });
+                });
+            });
+        }
+
+        // 格式转换函数
+        function pad(num, size) {
+            let s = num + '';
+            while (s.length < size) s = '0' + s;
+            return s;
+        }
+
+        // 可选课程显示函数
+        function displayFilteredCourseSelectionInfo() {
+            content.innerHTML = `
+                <h2>选课</h2>
+                <label for="courseIdSearch">课程编号:</label>
+                <input type="text" id="courseIdSearch" oninput="filterCourses()">
+                <label for="courseNameSearch">课程名称:</label>
+                <input type="text" id="courseNameSearch" oninput="filterCourses()">
+                <label for="creditsSearch">学分:</label>
+                <input type="text" id="creditsSearch" oninput="filterCourses()">
+                <label for="teacherSearch">老师:</label>
+                <input type="text" id="teacherSearch" oninput="filterCourses()">
+                <table id="courseTable">
+                    <tr>
+                        <th>课程编号</th>
+                        <th>课程名称</th>
+                        <th>学分</th>
+                        <th>老师</th>
+                        <th>操作</th>
+                    </tr>
+                </table>
+            `;
+            displayCourseTable(filtered_courses);
+        }
+
+        function displayCourseTable(courses) {
+            const table = document.getElementById('courseTable');
+            table.innerHTML = `
+                <tr>
+                    <th>课程编号</th>
+                    <th>课程名称</th>
+                    <th>学分</th>
+                    <th>老师</th>
+                    <th>操作</th>
+                </tr>
+            `;
+
+            courses.forEach(course => {
+                const row = document.createElement('tr');
+                const courseIdCell = document.createElement('td');
+                courseIdCell.textContent = pad(course.course_id, 8);
+                row.appendChild(courseIdCell);
+                const courseNameCell = document.createElement('td');
+                courseNameCell.textContent = course.course_name;
+                row.appendChild(courseNameCell);
+                const creditsCell = document.createElement('td');
+                creditsCell.textContent = course.credits;
+                row.appendChild(creditsCell);
+                const teacherCell = document.createElement('td');
+                teacherCell.textContent = course.teacher_name;
+                row.appendChild(teacherCell);
+
+                const actionCell = document.createElement('td');
+                const selectBtn = document.createElement('button');
+                selectBtn.textContent = '选课';
+                selectBtn.classList.add('edit-course-btn');
+                selectBtn.style.backgroundColor = '#4CAF50';
+                actionCell.appendChild(selectBtn);
+                row.appendChild(actionCell);
+                table.appendChild(row);
+            });
+
+            // 添加事件监听器
+            filteredCourseAttachEventListeners();
+        }
+
+        // 搜索功能
+        function filterCourses() {
+            const courseIdSearch = document.getElementById('courseIdSearch').value.toLowerCase();
+            const courseNameSearch = document.getElementById('courseNameSearch').value.toLowerCase();
+            const creditsSearch = document.getElementById('creditsSearch').value.toLowerCase();
+            const teacherSearch = document.getElementById('teacherSearch').value.toLowerCase();
+
+            const filteredCourses = filtered_courses.filter(course => {
+                return (courseIdSearch ? course.course_id.toString().toLowerCase().includes(courseIdSearch) : true) &&
+                    (courseNameSearch ? course.course_name.toLowerCase().includes(courseNameSearch) : true) &&
+                    (creditsSearch ? course.credits.toString().toLowerCase() === creditsSearch : true) &&
+                    (teacherSearch ? course.teacher_name.toLowerCase().includes(teacherSearch) : true);
+            });
+
+            displayCourseTable(filteredCourses);
+        }
+
+        // 可选课程监听器
+        function filteredCourseAttachEventListeners() {
+            const selectBtns = document.querySelectorAll('.edit-course-btn');
+
+            selectBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const row = btn.parentElement.parentElement;
+                    const courseId = row.querySelector('td:first-child').textContent;
+                    const data = { course_id: courseId, action: 'select_course', account: studentId};
+                    sendDataToServer(data);
+                });
+            });
+        }
+
+        // 已有课程显示函数
+        function displayCourseSelectionInfo() {
+            const table = document.createElement('table');
+            table.innerHTML = `
+                <h2>已选课程<h2>
+                <tr>
+                    <th>课程编号</th>
+                    <th>课程名称</th>
+                    <th>学分</th>
+                    <th>老师</th>
+                    <th>操作</th>
+                </tr>
+            `;
+
+            courses.forEach(course => {
+                const row = document.createElement('tr');
+                const courseIdCell = document.createElement('td');
+                courseIdCell.textContent = pad(course.course_id, 8);
+                row.appendChild(courseIdCell);
+                const courseNameCell = document.createElement('td');
+                courseNameCell.textContent = course.course_name;
+                row.appendChild(courseNameCell);
+                const creditsCell = document.createElement('td');
+                creditsCell.textContent = course.credits;
+                row.appendChild(creditsCell);
+                const teacherCell = document.createElement('td');
+                teacherCell.textContent = course.teacher_name;
+                row.appendChild(teacherCell);
+
+                const actionCell = document.createElement('td');
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = '退课';
+                deleteBtn.classList.add('delete-course-btn');
+                actionCell.appendChild(deleteBtn);
+                row.appendChild(actionCell);
+                table.appendChild(row);
+            });
+
+            content.innerHTML = '';
+            content.appendChild(table);
+
+            // 添加事件监听器
+            courseAttachEventListeners();
+        }
+
+        function courseAttachEventListeners() {
+            const deleteBtns = document.querySelectorAll('.delete-course-btn');
+
+            deleteBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const row = btn.parentElement.parentElement;
+                    const courseId = row.querySelector('td:first-child').textContent;
+                    const data = { course_id: courseId, action: 'delete_student_course', account: studentId};
+                    sendDataToServer(data);
+                });
+            });
+        }
+
+        // 数据发送函数
+        function sendDataToServer(data) {
+            const form = document.createElement('form');
+            form.setAttribute('method', 'post');
+            form.setAttribute('action', "{% url 'handle_data' %}");
+
+            for (const key in data) {
+                if (data.hasOwnProperty(key)) {
+                    const input = document.createElement('input');
+                    input.setAttribute('type', 'hidden');
+                    input.setAttribute('name', key);
+                    input.setAttribute('value', data[key]);
+                    form.appendChild(input);
+                }
+            }
+            document.body.appendChild(form);
+            form.submit();
+        }
+    </script>
+</body>
+</html>

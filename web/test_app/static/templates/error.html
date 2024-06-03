@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Information</title>
+    <style>
+        .countdown {
+            font-size: 2em;
+            color: #ff4500;
+            margin-top: 20px;
+        }
+        @keyframes countdown {
+            from { width: 100%; }
+            to { width: 0%; }
+        }
+        .countdown-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #f3f3f3;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        .countdown-bar-inner {
+            height: 100%;
+            background-color: #ff4500;
+            animation: countdown 3s linear forwards;
+        }
+    </style>
+</head>
+<body>
+    <h1>出错啦！</h1>
+    <div id="account-info">{{ error_string }}</div>
+    <div class="countdown" id="countdown">3</div>
+    <div class="countdown-bar">
+        <div class="countdown-bar-inner"></div>
+    </div>
+
+    <script>
+        let countdownNumber = 3;
+        const countdownElement = document.getElementById('countdown');
+        const account = "{{ account }}";
+
+        const countdownInterval = setInterval(() => {
+            countdownNumber--;
+            countdownElement.textContent = countdownNumber;
+            if (countdownNumber === 0) {
+                clearInterval(countdownInterval);
+                if (account) {
+                    // account 不为空时跳转到指定的 URL
+                    const url = "{% url 'system_interface' 0 %}".replace('0', account);
+                    window.location.href = url;
+                } else {
+                    // account 为空时跳转到 login 页面
+                    window.location.href = '{% url "login" %}';
+                }
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-image: url(../img/background.jpg);
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+.container {
+    max-width: 400px;
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    text-align: center; /* 文本居中 */
+    position: relative; /* 相对定位 */
+}
+.logo {
+    width: 150px; /* 图片宽度 */
+}
+/* 调整输入框和按钮样式 */
+input[type="text"],
+input[type="password"]
+{
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+button {
+    width: calc(100% - 40px); /* 输入框和按钮宽度减去左右各20px的padding */
+    margin-bottom: 10px; /* 下方间距 */
+    padding: 10px; /* 内边距 */
+    border-radius: 5px; /* 圆角 */
+    border: 1px solid #ccc; /* 边框 */
+}
+/* 调整标签和输入框在同一行，并右对齐 */
+.form-group {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    font-weight: bold;
+}
+.form-group label {
+    width: 100px; /* 标签宽度 */
+    margin-right: 10px; /* 右边距 */
+}
+/* 返回链接样式 */
+.return-link {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    text-decoration: none;
+    color: #3498db;
+    transition: color 0.3s ease;
+}
+.return-link:hover {
+    color: #2980b9;
+}

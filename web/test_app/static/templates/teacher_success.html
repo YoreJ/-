@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>选课系统 - 老师</title>
+    <link rel="stylesheet" href="{% static 'css/system_interface.css' %}">
+</head>
+<body>
+    <div id="sidebar" class="sidebar">
+        <a href="#" id="homeLink">首页</a>
+        <a href="#" id="courseLink">课程信息</a>
+    </div>
+    <div id="teacher-info" data-teacher-id="{{ teacher_id }}" data-teacher-name="{{ teacher_name }}" data-teacher-email="{{ teacher_email }}"></div>
+    <div id="content" class="content">
+        <!-- Content will be dynamically loaded here -->
+    </div>
+     <script>
+        const homeLink = document.getElementById('homeLink');
+        const courseLink = document.getElementById('courseLink');
+        const content = document.getElementById('content');
+        const courses = JSON.parse('{{ courses_json|escapejs }}');
+
+        const teacherInfoDiv = document.getElementById('teacher-info');
+        const teacherId = teacherInfoDiv.dataset.teacherId;
+        const teacherName = teacherInfoDiv.dataset.teacherName;
+        const teacherEmail = teacherInfoDiv.dataset.teacherEmail;
+
+
+        // 页面加载时直接显示教师信息
+        displayTeacherInfo();
+
+        courseLink.addEventListener('click', () => {
+            displayCourseInfo();
+        });
+
+        homeLink.addEventListener('click', () => {
+            displayTeacherInfo();
+        });
+
+        // 显示教师信息函数
+        function displayTeacherInfo() {
+            content.innerHTML = `
+                <h2>教师信息</h2>
+                <table>
+                    <tr>
+                        <th>教师姓名</th>
+                        <td>{{ teacher_name }}</td>
+                        <td><button class="edit-course-btn">修改</button><td>
+                    </tr>
+                    <tr>
+                        <th>邮箱</th>
+                        <td>{{ teacher_email }}</td>
+                        <td><button class="edit-course-btn">修改</button><td>
+                    </tr>
+                    <tr>
+                        <th>密码</th>
+                        <td>{{ teacher_password }}</td>
+                        <td><button class="edit-course-btn">修改</button><td>
+                    </tr>
+                </table>
+            `;
+            // 添加事件监听器
+            TeacherAttachEventListeners();
+        }
+
+        // 显示课程信息函数
+        function displayCourseInfo() {
+            const table = document.createElement('table');
+            table.innerHTML = `
+                <h2>我的课程<h2>
+            `;
+            const headerRow = document.createElement('tr');
+            const courseIdHeader = document.createElement('th'); // 添加课程编号的表头
+            courseIdHeader.textContent = '课程编号';
+            headerRow.appendChild(courseIdHeader);
+            const courseNameHeader = document.createElement('th');
+            courseNameHeader.textContent = '课程名称';
+            headerRow.appendChild(courseNameHeader);
+            const creditsHeader = document.createElement('th');
+            creditsHeader.textContent = '学分';
+            headerRow.appendChild(creditsHeader);
+            const actionHeader = document.createElement('th');
+            actionHeader.textContent = '操作';
+            headerRow.appendChild(actionHeader);
+            table.appendChild(headerRow);
+
+            courses.forEach(course => {
+                const row = document.createElement('tr');
+                const courseIdCell = document.createElement('td'); // 添加课程编号的单元格
+                courseIdCell.textContent = pad(course.course_id, 8); // 补零操作
+                row.appendChild(courseIdCell);
+                const courseNameCell = document.createElement('td');
+                courseNameCell.textContent = course.course_name;
+                row.appendChild(courseNameCell);
+                // 添加显示学分的单元格
+                const creditsCell = document.createElement('td');
+                creditsCell.textContent = course.credits;
+                row.appendChild(creditsCell);
+                const actionCell = document.createElement('td');
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = '删除';
+                deleteBtn.classList.add('delete-course-btn');
+                actionCell.appendChild(deleteBtn);
+                const editBtn = document.createElement('button');
+                editBtn.textContent = '修改';
+                editBtn.classList.add('edit-course-btn');
+                actionCell.appendChild(editBtn);
+                row.appendChild(actionCell);
+                table.appendChild(row);
+            });
+
+            // 添加一个按钮用于添加课程
+            const addButtonRow = document.createElement('tr');
+            const addButtonCell = document.createElement('td');
+            addButtonCell.colSpan = '4'; // 横跨整行
+            const addButton = document.createElement('button');
+            addButton.textContent = '添加课程';
+            addButton.classList.add('add-course-btn');
+            addButtonCell.appendChild(addButton);
+            addButtonRow.appendChild(addButtonCell);
+            table.appendChild(addButtonRow);
+
+            content.innerHTML = '';
+            content.appendChild(table);
+
+            // 添加事件监听器
+            CourseAttachEventListeners();
+        }
+
+        // 补零操作函数，确保课程编号为八位数
+        function pad(num, size) {
+            let s = num + '';
+            while (s.length < size) s = '0' + s;
+            return s;
+        }
+
+        // 添加事件监听器函数
+        function CourseAttachEventListeners() {
+            const deleteBtns = document.querySelectorAll('.delete-course-btn');
+            const editBtns = document.querySelectorAll('.edit-course-btn');
+            const addBtn = document.querySelector('.add-course-btn');
+
+            deleteBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const row = btn.parentElement.parentElement;
+                    const courseId = row.querySelector('td:first-child').textContent;
+                    const data = { course_id: courseId, action: 'delete_course', account: teacherId};
+                    sendDataToServer(data);
+                });
+            });
+
+            editBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    modifyCourseInfo(btn); // 调用修改课程信息函数
+                });
+            });
+
+
+            addBtn.addEventListener('click', () => {
+                addCourse();
+            });
+
+        }
+
+
+        function TeacherAttachEventListeners() {
+            const editBtns = document.querySelectorAll('.edit-course-btn');
+
+            editBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // 获取当前按钮所在行
+                    const row = btn.parentElement.parentElement;
+
+                    const informationCell = row.querySelector('td:nth-child(2)');
+                    const updateType = row.rowIndex;
+
+                    const originalInformation = informationCell.textContent;
+
+                    // 将原信息显示为输入框
+                    informationCell.innerHTML = `<input type="text" value="${originalInformation}">`;
+
+                    // 隐藏修改按钮
+                    btn.style.display = 'none';
+
+                    // 创建确认和取消按钮
+                    const confirmBtn = document.createElement('button');
+                    confirmBtn.textContent = '确认';
+                    confirmBtn.style.backgroundColor = 'green';
+                    confirmBtn.classList.add('edit-course-btn');
+
+                    const cancelBtn = document.createElement('button');
+                    cancelBtn.textContent = '取消';
+                    cancelBtn.classList.add('edit-course-btn');
+
+                    // 清空操作单元格并添加按钮
+                    const actionCell = row.querySelector('td:nth-child(4)');
+                    actionCell.innerHTML = '';
+                    actionCell.appendChild(confirmBtn);
+                    actionCell.appendChild(cancelBtn);
+
+                    // 添加事件监听器
+                    confirmBtn.addEventListener('click', () => {
+                        const newInformation = informationCell.querySelector('input').value;
+
+
+                        const data = {
+                            account: teacherId,
+                            new_information: newInformation,
+                            update_type: updateType,
+                            action: 'update_information'
+                        };
+                        // 发送数据到服务器进行更新教师信息操作
+                        sendDataToServer(data);
+                    });
+
+                    cancelBtn.addEventListener('click', () => {
+                        informationCell.textContent = originalInformation;
+
+                        // 重新显示修改按钮
+                        btn.style.display = 'inline';
+
+                        // 移除确认和取消按钮
+                        actionCell.removeChild(confirmBtn);
+                        actionCell.removeChild(cancelBtn);
+                    });
+                });
+            });
+        }
+
+
+        // 修改课程信息函数
+        function modifyCourseInfo(btn) {
+            const row = btn.parentElement.parentElement;
+            const courseNameCell = row.querySelector('td:nth-child(2)');
+            const creditsCell = row.querySelector('td:nth-child(3)');
+
+            const originalCourseName = courseNameCell.textContent;
+            const originalCredits = creditsCell.textContent;
+
+            // 将课程名称和学分显示为输入框
+            courseNameCell.innerHTML = `<input type="text" value="${originalCourseName}">`;
+            creditsCell.innerHTML = `<input type="text" value="${originalCredits}">`;
+
+            // 将按钮修改为确认和取消按钮
+            const confirmBtn = document.createElement('button');
+            confirmBtn.textContent = '确认';
+            confirmBtn.style.backgroundColor = 'green';
+            confirmBtn.classList.add('edit-course-btn');
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = '取消';
+            cancelBtn.classList.add('edit-course-btn');
+
+            const actionCell = row.querySelector('td:nth-child(4)');
+            actionCell.innerHTML = '';
+            actionCell.appendChild(confirmBtn);
+            actionCell.appendChild(cancelBtn);
+
+            // 添加事件监听器
+            confirmBtn.addEventListener('click', () => {
+                const newCourseName = courseNameCell.querySelector('input').value;
+                const newCredits = creditsCell.querySelector('input').value;
+                const row = confirmBtn.closest('tr'); // 获取包含课程信息的整行
+                const courseId = row.querySelector('td:first-child').textContent; // 获取课程ID
+                // 发送到服务器进行更新
+                const data = {
+                    account: teacherId,
+                    course_id: courseId,
+                    new_course_name: newCourseName,
+                    new_credits: newCredits,
+                    action: 'update_course'
+                };
+                sendDataToServer(data);
+            });
+
+            cancelBtn.addEventListener('click', () => {
+                // 恢复原始的课程信息显示状态
+                courseNameCell.textContent = originalCourseName;
+                creditsCell.textContent = originalCredits;
+                actionCell.innerHTML = '';
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = '删除';
+                deleteBtn.classList.add('delete-course-btn');
+                actionCell.appendChild(deleteBtn);
+                const editBtn = document.createElement('button');
+                editBtn.textContent = '修改';
+                editBtn.classList.add('edit-course-btn');
+                actionCell.appendChild(editBtn);
+
+                // 重新添加事件监听器
+                deleteBtn.addEventListener('click', () => {
+                    const row = deleteBtn.parentElement.parentElement;
+                    const courseId = row.querySelector('td:first-child').textContent;
+                    const data = { course_id: courseId, action: 'delete_course', account: teacherId};
+                    sendDataToServer(data);
+                });
+
+                editBtn.addEventListener('click', () => {
+                    modifyCourseInfo(editBtn);
+                });
+            });
+        }
+
+
+        function addCourse() {
+            const table = document.querySelector('table'); // 获取课程表格
+            const newRow = document.createElement('tr'); // 创建一个新的表格行
+
+            // 创建课程名称单元格，并添加输入框
+            const courseNameCell = document.createElement('td');
+            const courseNameInput = document.createElement('input');
+            courseNameInput.setAttribute('type', 'text');
+            courseNameInput.setAttribute('placeholder', '输入课程名称');
+            courseNameCell.appendChild(courseNameInput);
+            newRow.appendChild(courseNameCell);
+
+            // 创建学分单元格，并添加输入框
+            const creditsCell = document.createElement('td');
+            const creditsInput = document.createElement('input');
+            creditsInput.setAttribute('type', 'text');
+            creditsInput.setAttribute('placeholder', '输入学分');
+            creditsCell.appendChild(creditsInput);
+            newRow.appendChild(creditsCell);
+
+            // 创建操作单元格，并添加确认和取消按钮
+            const actionCell = document.createElement('td');
+            const confirmBtn = document.createElement('button');
+            confirmBtn.textContent = '确认';
+            confirmBtn.style.backgroundColor = 'green';
+            confirmBtn.classList.add('edit-course-btn');
+            confirmBtn.classList.add('confirm-add-course-btn');
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = '取消';
+            cancelBtn.classList.add('edit-course-btn');
+            cancelBtn.classList.add('cancel-add-course-btn');
+            actionCell.appendChild(confirmBtn);
+            actionCell.appendChild(cancelBtn);
+            newRow.appendChild(actionCell);
+
+            // 将新行添加到表格的最后一行
+            table.appendChild(newRow);
+
+            // 添加事件监听器，处理确认和取消按钮的点击事件
+            confirmBtn.addEventListener('click', () => {
+                // 获取用户输入的课程名称和学分
+                const newCourseName = courseNameInput.value;
+                const newCredits = creditsInput.value;
+                // 如果课程名称或学分为空，则不进行添加操作
+                if (newCourseName.trim() === '' || newCredits.trim() === '') {
+                    alert('课程名称和学分不能为空！');
+                    return;
+                }
+                // 创建包含课程信息的数据对象
+                const data = {
+                    account: teacherId,
+                    new_course_name: newCourseName,
+                    new_credits: newCredits,
+                    action: 'add_course'
+                };
+                // 发送数据到服务器进行添加课程操作
+                sendDataToServer(data);
+            });
+
+            cancelBtn.addEventListener('click', () => {
+                // 如果用户点击取消按钮，则移除新添加的课程行
+                table.removeChild(newRow);
+            });
+        }
+
+
+
+        function sendDataToServer(data) {
+            const form = document.createElement('form');
+            form.setAttribute('method', 'post');
+            form.setAttribute('action', "{% url 'handle_data' %}");
+
+            for (const key in data) {
+                if (data.hasOwnProperty(key)) {
+                    const input = document.createElement('input');
+                    input.setAttribute('type', 'hidden');
+                    input.setAttribute('name', key);
+                    input.setAttribute('value', data[key]);
+                    form.appendChild(input);
+                }
+            }
+            document.body.appendChild(form);
+            form.submit();
+        }
+    </script>
+</body>
+</html>

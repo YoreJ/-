@@ -1,0 +1,54 @@
+
+
+
+
+
+创建用户：
+CREATE TABLE users (
+    account INT AUTO_INCREMENT PRIMARY KEY,
+    password VARCHAR(255) NOT NULL,
+    username VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    permission VARCHAR(255) NOT NULL
+);
+
+
+
+创建课程表：
+CREATE TABLE courses (
+    course_id INT AUTO_INCREMENT PRIMARY KEY,
+    course_name VARCHAR(255) NOT NULL,
+    credits DECIMAL,
+    teacher_account INT NOT NULL,
+    FOREIGN KEY (teacher_account) REFERENCES users(account)
+);
+
+
+创建学生表：
+CREATE TABLE students (
+    student_id INT PRIMARY KEY,
+    total_credits INT NOT NULL,
+    FOREIGN KEY (student_id) REFERENCES users(account)
+);
+
+创建选课表：
+CREATE TABLE course_selection (
+    course_id INT NOT NULL,
+    student_id INT NOT NULL,
+    FOREIGN KEY (course_id) REFERENCES courses(course_id),
+    FOREIGN KEY (student_id) REFERENCES users(account)
+);
+
+创建触发器：
+DELIMITER //
+
+CREATE TRIGGER add_student_after_insert
+AFTER INSERT ON users
+FOR EACH ROW
+BEGIN
+    IF NEW.permission = 'student' THEN
+        INSERT INTO students (student_id, total_credits) VALUES (NEW.account, 0);
+    END IF;
+END //
+
+DELIMITER ;

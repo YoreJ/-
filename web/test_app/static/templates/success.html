@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>等待中...</title>
+    <style>
+      /* CSS 样式用于将文字居中显示 */
+      body, html {
+        height: 100%;
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: #f0f0f0; /* 设置背景颜色，可根据需要调整 */
+      }
+    </style>
+</head>
+<body>
+  <h1 id="countdown">成功！3秒后返回</h1>
+
+  <script>
+    var countdownElement = document.getElementById('countdown');
+    var countdown = 3; // 设置倒数秒数
+
+    // 每秒更新倒数数字
+    var countdownInterval = setInterval(function() {
+      countdown--;
+      if (countdown >= 0) {
+        countdownElement.innerText = '成功！' + countdown + '秒后返回';
+      } else {
+        clearInterval(countdownInterval);
+        window.location.href = "{% url 'login' %}";
+      }
+    }, 1000); // 每秒 (1000 毫秒) 更新一次倒数数字
+  </script>
+</body>
+</html>
